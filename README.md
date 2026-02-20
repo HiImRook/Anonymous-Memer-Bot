@@ -68,4 +68,4 @@ Session data is stored in a Map and cleared immediately after each meme is gener
 
 MIT License — See LICENSE file
 
-Copyright (c) 2024-2026 Rook
+Copyright (c) 2025-2026 Rook
