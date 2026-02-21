@@ -1,3 +1,14 @@
+## [1.1.0] - 2026-02-21
+
+### Added
+- Global concurrency cap (3 concurrent renders)
+- Immediate rejection with "try again soon" when at capacity
+- Fetch timeout with AbortController (15 seconds)
+- File size guard (25MB max, checked before fetch)
+
+### Changed
+- Removed unused GuildMessages and MessageContent intents
+
 # Changelog
 
 ## [1.0.0] - 2026-02-20
