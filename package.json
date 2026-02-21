@@ -1,6 +1,6 @@
 {
   "name": "discord-memer-bot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "bot.js",
   "dependencies": {
     "canvas": "^3.2.1",
