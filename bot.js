@@ -5,8 +5,6 @@ require('dotenv').config()
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
   ],
 })
 
@@ -37,10 +35,20 @@ const pendingMemes = new Map()
 
 const SESSION_CLEANUP_INTERVAL = 10 * 60 * 1000
 const SESSION_MAX_AGE = 15 * 60 * 1000
+const MAX_FILE_SIZE = 25 * 1024 * 1024
+const FETCH_TIMEOUT = 15000
+const MAX_CONCURRENT_RENDERS = 3
+
+let activeRenders = 0
 
 async function createMeme(imageUrl, position, color, text, fontChoice) {
   try {
-    const response = await fetch(imageUrl)
+    const controller = new AbortController()
+    const fetchTimeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+
+    const response = await fetch(imageUrl, { signal: controller.signal })
+    clearTimeout(fetchTimeout)
+
     const arrayBuffer = await response.arrayBuffer()
     const imageBuffer = Buffer.from(arrayBuffer)
 
@@ -166,6 +174,11 @@ client.on('interactionCreate', async (interaction) => {
         return
       }
 
+      if (attachment.size > MAX_FILE_SIZE) {
+        await interaction.reply({ content: '❌ Image must be under 25MB.', ephemeral: true })
+        return
+      }
+
       pendingMemes.set(interaction.user.id, { imageUrl: attachment.url, timestamp: Date.now() })
 
       const row1 = new ActionRowBuilder().addComponents(
@@ -244,12 +257,19 @@ client.on('interactionCreate', async (interaction) => {
         return
       }
 
+      if (activeRenders >= MAX_CONCURRENT_RENDERS) {
+        await interaction.reply({ content: '⏳ Bot is busy. Try again in a moment.', ephemeral: true })
+        return
+      }
+
       await interaction.deferReply()
+      activeRenders++
 
       const text = interaction.fields.getTextInputValue('meme_text')
       const { buffer, error } = await createMeme(memeData.imageUrl, memeData.position, memeData.color, text, memeData.font || 'Impact')
 
       pendingMemes.delete(interaction.user.id)
+      activeRenders--
 
       if (error) {
         await interaction.editReply({ content: `❌ ${error}` })
@@ -261,6 +281,7 @@ client.on('interactionCreate', async (interaction) => {
 
   } catch (error) {
     console.error('Interaction Error:', error)
+    activeRenders = Math.max(0, activeRenders - 1)
     if (interaction.deferred) {
       await interaction.editReply({ content: '❌ An error occurred while processing the image.' })
     } else if (!interaction.replied) {
